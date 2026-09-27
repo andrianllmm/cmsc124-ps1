@@ -116,8 +116,10 @@ dt_status dt_value_as_enum(dt_value v, int *out)
        dt_value_as_enum(dt_value_enum(2), &out)  -> DT_OK, out = 2 for BLUE
        dt_value_as_enum(dt_value_nil(), &out)    -> DT_ERR_TAG, out untouched
        cases/normal/union_readers.case, cases/tag/as_enum_on_nil.case */
-    (void)v;
-    (void)out;
+    if (v.tag == DT_ENUM) {
+        *out = v.as.ordinal;
+        return DT_OK;
+    }
     return DT_ERR_TAG;
 }
 
