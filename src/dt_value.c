@@ -100,8 +100,10 @@ dt_status dt_value_as_int(dt_value v, long long *out)
        dt_value_as_int(dt_value_int(42), &out)  -> DT_OK, out = 42
        dt_value_as_int(dt_value_str(s), &out)   -> DT_ERR_TAG, out untouched
        cases/normal/union_readers.case, cases/tag/as_int_on_string.case */
-    (void)v;
-    (void)out;
+    if (v.tag == DT_INT) {
+        *out = v.as.integer;
+        return DT_OK;
+    }
     return DT_ERR_TAG;
 }
 
