@@ -33,10 +33,14 @@ dt_status dt_int_add(long long a, long long b, long long *out)
        dt_int_add(2, 3, &out)          -> DT_OK, out = 5
        dt_int_add(LLONG_MAX, 1, &out)  -> DT_ERR_OVERFLOW, out untouched
        cases/normal/int_arithmetic.case, cases/boundary/int_overflow_add.case */
-    (void)a;
-    (void)b;
-    (void)out;
-    return DT_ERR_OVERFLOW;
+
+    // case b > 0: a + b > LLONG_MAX
+    if (b > 0 && a > LLONG_MAX - b) return DT_ERR_OVERFLOW;
+    // case b < 0: a + b < LLONG_MIN
+    if (b < 0 && a < LLONG_MIN - b) return DT_ERR_OVERFLOW;
+
+    *out = a + b;
+    return DT_OK;
 }
 
 /*
@@ -51,10 +55,14 @@ dt_status dt_int_sub(long long a, long long b, long long *out)
        dt_int_sub(10, 4, &out)                 -> DT_OK, out = 6
        dt_int_sub(LLONG_MIN + 1, 2, &out)      -> DT_ERR_OVERFLOW, out untouched
        cases/normal/int_arithmetic.case, cases/boundary/int_overflow_sub_min.case */
-    (void)a;
-    (void)b;
-    (void)out;
-    return DT_ERR_OVERFLOW;
+
+    // case b > 0: a - b < LLONG_MIN
+    if (b > 0 && a < LLONG_MIN + b) return DT_ERR_OVERFLOW;
+    // case b < 0: a - b > LLONG_MAX
+    if (b < 0 && a > LLONG_MAX + b) return DT_ERR_OVERFLOW;
+
+    *out = a - b;
+    return DT_OK;
 }
 
 /*
@@ -70,8 +78,25 @@ dt_status dt_int_mul(long long a, long long b, long long *out)
        dt_int_mul(LLONG_MIN, -1, &out)   -> DT_ERR_OVERFLOW, out untouched
        cases/normal/int_arithmetic.case,
        cases/boundary/int_mul_min_by_negative_one.case */
-    (void)a;
-    (void)b;
-    (void)out;
-    return DT_ERR_OVERFLOW;
+
+    // case a == 0 or b == 0: a * b == 0
+    if (a == 0 || b == 0) {
+        *out = 0;
+        return DT_OK;
+    }
+
+    // case a > 0, b > 0: a * b > LLONG_MAX
+    if (a > 0 && b > 0 && a > LLONG_MAX / b) return DT_ERR_OVERFLOW;
+
+    // case a < 0, b < 0: a * b > LLONG_MAX (dividing by negative b flips)
+    if (a < 0 && b < 0 && a < LLONG_MAX / b) return DT_ERR_OVERFLOW;
+
+    // case a > 0, b < 0: a * b < LLONG_MIN (divide by positive a)
+    if (a > 0 && b < 0 && b < LLONG_MIN / a) return DT_ERR_OVERFLOW;
+
+    // case a < 0, b > 0: a * b < LLONG_MIN (divide by positive b)
+    if (a < 0 && b > 0 && a < LLONG_MIN / b) return DT_ERR_OVERFLOW;
+
+    *out = a * b;
+    return DT_OK;
 }
