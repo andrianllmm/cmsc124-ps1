@@ -133,7 +133,9 @@ dt_status dt_value_as_str(dt_value v, dt_str **out)
        dt_value_as_str(dt_value_int(42), &out) -> DT_ERR_TAG, *out untouched
        the tag check prevents the printer from reading 42 as an address
        cases/normal/union_readers.case, cases/tag/as_str_on_int.case */
-    (void)v;
-    (void)out;
+    if (v.tag == DT_STR) {
+        *out = v.as.string;
+        return DT_OK;
+    }
     return DT_ERR_TAG;
 }
