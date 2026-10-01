@@ -90,9 +90,7 @@ size_t dt_str_len(const dt_str *s)
         dt_str_len(greeting) -> 12
     cases/normal/string_building.case */
 
-    size_t len = s->length;
-
-    return len;
+    return s->length;
 }
 
 /*
@@ -107,9 +105,7 @@ const char *dt_str_bytes(const dt_str *s)
          dt_str_len(s)   -> 3, the required read length
        cases/capacity/embedded_zero_byte.case */
 
-    char *buffer = s->bytes;
-
-    return buffer;
+    return s->bytes;
 }
 
 /*
@@ -128,7 +124,7 @@ dt_status dt_str_append(dt_str *s, const char *bytes, size_t length)
        cases/normal/string_building.case, cases/capacity/string_growth.case */
 
     size_t new_length = s->length;
-    if (new_length > SIZE_MAX - 1 - length) {
+    if (length > SIZE_MAX - 1 - new_length) {
         return DT_ERR_CAPACITY;
     }
     new_length += length;
