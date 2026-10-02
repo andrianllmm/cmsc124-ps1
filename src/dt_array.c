@@ -125,6 +125,22 @@ long long dt_array_lower_bound(const dt_array *a)
 }
 
 /*
+ * dt_array_offset writes the storage offset of index when it is in bounds.
+ */
+static bool dt_array_offset(const dt_array *a, long long index, size_t *out)
+{
+    if (index < a->lower_bound) {
+        return false;
+    }
+    unsigned long long offset = (unsigned long long)index - (unsigned long long)a->lower_bound;
+    if (offset >= a->length) {
+        return false;
+    }
+    *out = offset;
+    return true;
+}
+
+/*
  * dt_array_get writes the element at index to *out.
  * It returns DT_ERR_RANGE and does not change *out for an invalid index.
  */
@@ -142,10 +158,12 @@ dt_status dt_array_get(const dt_array *a, long long index, dt_value *out)
        cases/boundary/array_index_above_upper.case,
        cases/boundary/array_index_below_lower.case,
        cases/boundary/array_full_range_index.case */
-    (void)a;
-    (void)index;
-    (void)out;
-    return DT_ERR_RANGE;
+    size_t offset;
+    if (!dt_array_offset(a, index, &offset)) {
+        return DT_ERR_RANGE;
+    }
+    *out = a->elements[offset];
+    return DT_OK;
 }
 
 /*
@@ -161,8 +179,10 @@ dt_status dt_array_set(dt_array *a, long long index, dt_value v)
          dt_array_set(a, -1, dt_value_int(10))  -> DT_OK, offset 0 holds 10
          dt_array_set(a,  2, dt_value_int(10))  -> DT_ERR_RANGE, nothing changes
        cases/normal/array_basics.case, cases/boundary/array_negative_lower_bound.case */
-    (void)a;
-    (void)index;
-    (void)v;
-    return DT_ERR_RANGE;
+    size_t offset;
+    if (!dt_array_offset(a, index, &offset)) {
+        return DT_ERR_RANGE;
+    }
+    a->elements[offset] = v;
+    return DT_OK;
 }
