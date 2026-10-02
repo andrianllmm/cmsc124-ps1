@@ -43,9 +43,40 @@ dt_array *dt_array_new(size_t length, long long lower_bound)
        dt_array_new(0, 0)   -> an empty array
        cases/normal/array_basics.case, cases/boundary/array_empty.case,
        cases/boundary/array_negative_lower_bound.case */
-    (void)length;
-    (void)lower_bound;
-    return NULL;
+
+    // length * sizeof(dt_value) > SIZE_MAX
+    if (length > SIZE_MAX / sizeof(dt_value)) {
+        return NULL;
+    }
+
+    // lower_bound + (length - 1) > LLONG_MAX
+    if (length > 0 && length - 1 > (unsigned long long)LLONG_MAX - (unsigned long long)lower_bound) {
+        return NULL;
+    }
+
+    dt_array *a = malloc(sizeof *a);
+    if (a == NULL) {
+        return NULL;
+    }
+
+    a->length = length;
+    a->lower_bound = lower_bound;
+
+    if (length == 0) {
+        a->elements = NULL;
+        return a;
+    }
+
+    a->elements = malloc(length * sizeof *a->elements);
+    if (a->elements == NULL) {
+        free(a);
+        return NULL;
+    }
+    for (size_t i = 0; i < length; i++) {
+        a->elements[i] = dt_value_nil();
+    }
+
+    return a;
 }
 
 /*
@@ -58,7 +89,11 @@ void dt_array_free(dt_array *a)
        Preserve the referenced values. The driver environment owns them.
        an array holding a string  -> the element block goes, the string stays
        dt_array_free(NULL)        -> returns, having done nothing */
-    (void)a;
+    if (a == NULL) {
+        return;
+    }
+    free(a->elements);
+    free(a);
 }
 
 /*
