@@ -26,9 +26,8 @@ bool dt_enum_is_valid(int ordinal)
        dt_enum_is_valid(2)   -> true, BLUE
        dt_enum_is_valid(3)   -> false, one past the set
        dt_enum_is_valid(-1)  -> false, below the lower bound */
-    (void)ordinal;
-    (void)COLOR_NAMES; /* Delete this line after you use COLOR_NAMES. */
-    return false;
+
+    return (ordinal >= 0 && ordinal < DT_COLOR_COUNT);
 }
 
 /*
@@ -44,9 +43,13 @@ dt_status dt_enum_name(int ordinal, const char **out)
        dt_enum_name(2, &out)  -> DT_OK, *out = "BLUE"
        dt_enum_name(3, &out)  -> DT_ERR_RANGE, *out untouched
        cases/normal/enum_names.case */
-    (void)ordinal;
-    (void)out;
-    return DT_ERR_RANGE;
+
+    if (!dt_enum_is_valid(ordinal)) {
+        return DT_ERR_RANGE;
+    }
+
+    *out = COLOR_NAMES[ordinal];
+    return DT_OK;
 }
 
 /*
@@ -60,7 +63,16 @@ dt_status dt_enum_from_name(const char *name, int *out)
        dt_enum_from_name("PURPLE", &out)  -> DT_ERR_RANGE, out untouched
        dt_enum_from_name("1", &out)       -> DT_ERR_RANGE because no text matches
        cases/normal/enum_names.case */
-    (void)name;
-    (void)out;
+
+    if (name == NULL){
+        return DT_ERR_RANGE;
+    }       
+    
+    for (int i = 0; i < DT_COLOR_COUNT; i++) {
+        if (strcmp(name, COLOR_NAMES[i]) == 0) {
+            *out = i;
+            return DT_OK;
+        }
+    }
     return DT_ERR_RANGE;
 }
