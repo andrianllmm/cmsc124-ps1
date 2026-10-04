@@ -249,9 +249,45 @@ dt_status dt_map_remove(dt_map *m, const char *key)
          dt_map_remove(m, "ghost")  -> DT_ERR_KEY, nothing changes
        reinserting "alpha" appends it after "gamma"
        cases/normal/map_basics.case, cases/boundary/map_remove_missing_key.case */
-    (void)m;
-    (void)key;
-    return DT_ERR_KEY;
+
+    // get index
+    size_t i = bucket_of(m, key);
+
+    // walk the linked list, remembering the entry before curr
+    dt_map_entry *prev = NULL;
+    dt_map_entry *curr = m->buckets[i];
+    while (curr != NULL && strcmp(curr->key, key) != 0) {
+        prev = curr;
+        curr = curr->next;
+    }
+
+    // missing key
+    if (curr == NULL) {
+        return DT_ERR_KEY;
+    }
+
+    // unlink from the bucket
+    if (prev == NULL) {
+        m->buckets[i] = curr->next; // curr was the first entry
+    } else {
+        prev->next = curr->next;
+    }
+
+    // remove from order, shifting later entries left
+    size_t pos = 0;
+    while (m->order[pos] != curr) {
+        pos++;
+    }
+    for (size_t j = pos; j + 1 < m->length; j++) {
+        m->order[j] = m->order[j + 1];
+    }
+    m->length--;
+
+    // free the key copy and the entry, not the value
+    free(curr->key);
+    free(curr);
+
+    return DT_OK;
 }
 
 /*
