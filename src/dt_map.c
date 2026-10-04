@@ -20,8 +20,26 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DT_MAP_BUCKETS 16
+
+/*
+ * One key and its value.
+ */
+typedef struct dt_map_entry {
+    char *key;                 /* our own copy of the key */
+    dt_value value;            /* not ours to free */
+    struct dt_map_entry *next; /* next entry in the same bucket */
+} dt_map_entry;
+
+/*
+ * A hash table for lookup that remembers insertion order.
+ */
 struct dt_map {
-    int placeholder; /* TODO: Add the buckets and insertion-order data. */
+    dt_map_entry **buckets; /* one linked list per bucket */
+    size_t bucket_count;    /* how many buckets */
+    dt_map_entry **order;   /* entries in the order they were added */
+    size_t length;          /* how many keys */
+    size_t capacity;        /* how many entries order can hold */
 };
 
 /*
@@ -32,7 +50,23 @@ dt_map *dt_map_new(void)
     /* TODO: Return an allocated empty map. Return NULL after an allocation failure.
        dt_map_new()  -> a map whose dt_map_len is 0
        cases/normal/map_basics.case */
-    return NULL;
+    dt_map *m = malloc(sizeof *m);
+    if (m == NULL) {
+        return NULL;
+    }
+
+    m->buckets = calloc(DT_MAP_BUCKETS, sizeof *m->buckets);
+    if (m->buckets == NULL) {
+        free(m);
+        return NULL;
+    }
+
+    m->bucket_count = DT_MAP_BUCKETS;
+    m->order = NULL;
+    m->length = 0;
+    m->capacity = 0;
+
+    return m;
 }
 
 /*
@@ -46,7 +80,23 @@ void dt_map_free(dt_map *m)
        a map holding a string value  -> the nodes and keys go, the string stays
        dt_map_free(NULL)             -> returns, having done nothing
        cases/cleanup/map_churn.case */
-    (void)m;
+    if (m == NULL) return;
+
+    for (size_t i = 0; i < m->bucket_count; i++) {
+        dt_map_entry *curr = m->buckets[i];
+        while (curr != NULL) {
+            dt_map_entry *next = curr->next;
+            free(curr->key);
+            free(curr);
+            curr = next;
+        }
+    }
+
+    free(m->buckets);
+
+    free(m->order);
+
+    free(m);
 }
 
 /*
@@ -60,8 +110,7 @@ size_t dt_map_len(const dt_map *m)
        after put beta again:          dt_map_len(m) -> 3, still
        after del alpha:               dt_map_len(m) -> 2
        cases/normal/map_basics.case */
-    (void)m;
-    return 0;
+    return m->length;
 }
 
 /*
