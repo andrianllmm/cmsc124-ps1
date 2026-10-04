@@ -303,8 +303,11 @@ dt_status dt_map_key_at(const dt_map *m, size_t index, const char **out)
          dt_map_key_at(m, 0, &out)  -> DT_OK, *out = "alpha"
          dt_map_key_at(m, 3, &out)  -> DT_ERR_RANGE, *out untouched
        cases/normal/map_basics.case */
-    (void)m;
-    (void)index;
-    (void)out;
-    return DT_ERR_RANGE;
+    // only the first length slots of order hold entries
+    if (index >= m->length) {
+        return DT_ERR_RANGE;
+    }
+
+    *out = m->order[index]->key;
+    return DT_OK;
 }
