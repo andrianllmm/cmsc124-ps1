@@ -147,10 +147,62 @@ dt_status dt_map_put(dt_map *m, const char *key, dt_value v)
        put "beta" -> 22 on that map       -> DT_OK, same position, new value
        an allocation failure              -> DT_ERR_CAPACITY, map unchanged
        cases/normal/map_basics.case */
-    (void)m;
-    (void)key;
-    (void)v;
-    return DT_ERR_CAPACITY;
+
+    // get index
+    size_t i = bucket_of(m, key);
+
+    // get bucket
+    dt_map_entry *curr = m->buckets[i];
+    // walk the linked list
+    while (curr != NULL) {
+        // update case
+        if (strcmp(curr->key, key) == 0) {
+            curr->value = v;
+            return DT_OK;
+        }
+        curr = curr->next;
+    }
+
+    // make room in order
+    if (m->length == m->capacity) {
+        size_t new_capacity;
+        if (m->capacity == 0) {
+            new_capacity = 8;
+        } else {
+            new_capacity = m->capacity * 2;
+        }
+        dt_map_entry **temp_order = realloc(m->order, new_capacity * sizeof *m->order);
+        if (temp_order == NULL) {
+            return DT_ERR_CAPACITY;
+        }
+        m->order = temp_order;
+        m->capacity = new_capacity;
+    }
+
+    // allocate new entry
+    dt_map_entry *entry = malloc(sizeof *entry);
+    if (entry == NULL) {
+        return DT_ERR_CAPACITY;
+    }
+
+    // copy key
+    entry->key = malloc(strlen(key) + 1);
+    if (entry->key == NULL) {
+        free(entry);
+        return DT_ERR_CAPACITY;
+    }
+    memcpy(entry->key, key, strlen(key) + 1);
+
+    entry->value = v;
+
+    entry->next = m->buckets[i];
+    m->buckets[i] = entry;
+
+    m->order[m->length] = entry;
+
+    m->length++;
+
+    return DT_OK;
 }
 
 /*
@@ -166,9 +218,21 @@ dt_status dt_map_get(const dt_map *m, const char *key, dt_value *out)
          dt_map_get(m, "beta", &out)   -> DT_OK, *out is the integer 22
          dt_map_get(m, "ghost", &out)  -> DT_ERR_KEY, *out untouched
        cases/normal/map_basics.case, cases/boundary/map_missing_key.case */
-    (void)m;
-    (void)key;
-    (void)out;
+
+    // get index
+    size_t i = bucket_of(m, key);
+
+    // get bucket
+    dt_map_entry *curr = m->buckets[i];
+    // walk the linked list
+    while (curr != NULL) {
+        if (strcmp(curr->key, key) == 0) {
+            *out = curr->value;
+            return DT_OK;
+        }
+        curr = curr->next;
+    }
+
     return DT_ERR_KEY;
 }
 
