@@ -43,6 +43,24 @@ struct dt_map {
 };
 
 /*
+ * bucket_of hashes key with 64-bit FNV-1a and returns its bucket index.
+ */
+static size_t bucket_of(const dt_map *m, const char *key)
+{
+    /* FNV's fixed starting value. Unsigned, so overflow wraps instead of being UB. */
+    unsigned long long h = 14695981039346656037ULL;
+
+    /* unsigned char keeps each byte in 0..255 even where char is signed. */
+    for (const unsigned char *p = (const unsigned char *)key; *p != '\0'; p++) {
+        h ^= (unsigned long long)*p; /* mix this byte into the hash */
+        h *= 1099511628211ULL;       /* FNV prime: spreads that byte across all bits */
+    }
+
+    /* Compress the huge hash into 0..bucket_count-1. */
+    return (size_t)(h % m->bucket_count);
+}
+
+/*
  * dt_map_new builds an empty map. It returns NULL after an allocation failure.
  */
 dt_map *dt_map_new(void)
