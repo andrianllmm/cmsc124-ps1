@@ -43,9 +43,40 @@ dt_array *dt_array_new(size_t length, long long lower_bound)
        dt_array_new(0, 0)   -> an empty array
        cases/normal/array_basics.case, cases/boundary/array_empty.case,
        cases/boundary/array_negative_lower_bound.case */
-    (void)length;
-    (void)lower_bound;
-    return NULL;
+
+    // length * sizeof(dt_value) > SIZE_MAX
+    if (length > SIZE_MAX / sizeof(dt_value)) {
+        return NULL;
+    }
+
+    // lower_bound + (length - 1) > LLONG_MAX
+    if (length > 0 && length - 1 > (unsigned long long)LLONG_MAX - (unsigned long long)lower_bound) {
+        return NULL;
+    }
+
+    dt_array *a = malloc(sizeof *a);
+    if (a == NULL) {
+        return NULL;
+    }
+
+    a->length = length;
+    a->lower_bound = lower_bound;
+
+    if (length == 0) {
+        a->elements = NULL;
+        return a;
+    }
+
+    a->elements = malloc(length * sizeof *a->elements);
+    if (a->elements == NULL) {
+        free(a);
+        return NULL;
+    }
+    for (size_t i = 0; i < length; i++) {
+        a->elements[i] = dt_value_nil();
+    }
+
+    return a;
 }
 
 /*
@@ -58,7 +89,11 @@ void dt_array_free(dt_array *a)
        Preserve the referenced values. The driver environment owns them.
        an array holding a string  -> the element block goes, the string stays
        dt_array_free(NULL)        -> returns, having done nothing */
-    (void)a;
+    if (a == NULL) {
+        return;
+    }
+    free(a->elements);
+    free(a);
 }
 
 /*
@@ -71,8 +106,7 @@ size_t dt_array_len(const dt_array *a)
        after `arr new a 3 -1`:  dt_array_len(a) -> 3, the same three elements
        after `arr new a 0 0`:   dt_array_len(a) -> 0
        cases/normal/array_basics.case, cases/boundary/array_empty.case */
-    (void)a;
-    return 0;
+    return a->length;
 }
 
 /*
@@ -87,8 +121,23 @@ long long dt_array_lower_bound(const dt_array *a)
        after `arr new a 3 1`:   dt_array_lower_bound(a) -> 1
        cases/boundary/array_negative_lower_bound.case,
        cases/boundary/array_lower_bound_one.case */
-    (void)a;
-    return 0;
+    return a->lower_bound;
+}
+
+/*
+ * dt_array_offset writes the storage offset of index when it is in bounds.
+ */
+static bool dt_array_offset(const dt_array *a, long long index, size_t *out)
+{
+    if (index < a->lower_bound) {
+        return false;
+    }
+    unsigned long long offset = (unsigned long long)index - (unsigned long long)a->lower_bound;
+    if (offset >= a->length) {
+        return false;
+    }
+    *out = offset;
+    return true;
 }
 
 /*
@@ -109,10 +158,12 @@ dt_status dt_array_get(const dt_array *a, long long index, dt_value *out)
        cases/boundary/array_index_above_upper.case,
        cases/boundary/array_index_below_lower.case,
        cases/boundary/array_full_range_index.case */
-    (void)a;
-    (void)index;
-    (void)out;
-    return DT_ERR_RANGE;
+    size_t offset;
+    if (!dt_array_offset(a, index, &offset)) {
+        return DT_ERR_RANGE;
+    }
+    *out = a->elements[offset];
+    return DT_OK;
 }
 
 /*
@@ -128,8 +179,10 @@ dt_status dt_array_set(dt_array *a, long long index, dt_value v)
          dt_array_set(a, -1, dt_value_int(10))  -> DT_OK, offset 0 holds 10
          dt_array_set(a,  2, dt_value_int(10))  -> DT_ERR_RANGE, nothing changes
        cases/normal/array_basics.case, cases/boundary/array_negative_lower_bound.case */
-    (void)a;
-    (void)index;
-    (void)v;
-    return DT_ERR_RANGE;
+    size_t offset;
+    if (!dt_array_offset(a, index, &offset)) {
+        return DT_ERR_RANGE;
+    }
+    a->elements[offset] = v;
+    return DT_OK;
 }
